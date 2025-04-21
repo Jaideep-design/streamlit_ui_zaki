@@ -3,4 +3,4 @@ streamlit-autorefresh
 pandas
 numpy
 crcmod
-pymodbus
+pymodbus==3.6.8
