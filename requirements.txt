@@ -4,3 +4,4 @@ pandas
 numpy
 crcmod
 pymodbus==3.6.8
+paho-mqtt
