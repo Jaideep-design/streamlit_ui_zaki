@@ -1,0 +1,11 @@
+streamlit
+streamlit-autorefresh
+pandas
+numpy
+json
+crcmod
+csv
+time
+os
+pymodbus
+threading
