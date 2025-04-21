@@ -8,8 +8,11 @@ Created on Wed Apr 16 16:12:01 2025
 import MQTT_reference_mapping_v2 as mqtt_map
 import pandas as pd
 
-df_dict = pd.read_excel(r"C:\Users\Admin\Desktop\Inverter_UI\Solar_AC_data_dictionary_version_3.xlsx", header=1)
+# df_dict = pd.read_excel(r"C:\Users\Admin\Desktop\Inverter_UI\Solar_AC_data_dictionary_version_3.xlsx", header=1)
 # raw_hex = "01000300000000000000000116006400000000090001f4005c00070002000000dc1d56000000011068106800e6001200f000e601f4001200000000159f00010001000100020000001e00e6001e00e6010e011d011800dc0124003c0078001e000000230000000000050001000000000000000000000000190159010000000000000000000000000000000000000000000000000809042519293728000001600e10 IOT.COM0000102 AIRTELR02A07M08_OCP8991900992480943928F866082076503862020100020000000000000000"
+url = "https://raw.githubusercontent.com/Jaideep-design/Streamlit_UI/main/Solar_AC_data_dictionary_version_3.xlsx"
+df_dict = pd.read_excel(url, header=1)
+
 def parse_packet(raw_hex: str) -> dict:
     try:
         df_out = mqtt_map.process_all_registers(df_dict, raw_hex)
