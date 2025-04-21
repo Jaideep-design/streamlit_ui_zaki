@@ -1,7 +1,11 @@
 # ui_display.py
 
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+try:
+    from streamlit_autorefresh import st_autorefresh
+except ModuleNotFoundError:
+    st.warning("streamlit_autorefresh is not yet installed. Try refreshing the app in a few seconds.")
+    st.stop()
 import pandas as pd
 from data_reader import (
     load_register_map, create_dataframe_from_registers, log_data,
