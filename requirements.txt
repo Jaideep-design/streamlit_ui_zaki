@@ -2,8 +2,6 @@ streamlit
 streamlit-autorefresh
 pandas
 numpy
-json
 crcmod
-csv
 pymodbus
 threading
