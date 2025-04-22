@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 import pandas as pd
 import threading
-
+from datetime import datetime
 from data_reader import (
     load_register_map, create_dataframe_from_registers, log_data,
     client_sunnal, read_register, write_to_modbus_slave,
@@ -23,7 +23,7 @@ def cached_load_register_map():
 @st.cache_data
 def load_mqtt_topics():
     return [
-        "EZMCISAC0001",
+        "EZMCISAC00001",
         "EZMCISAC00002",
         "EZMCISAC00003",
         "EZMCISAC00004",
@@ -136,7 +136,10 @@ with col3:
 # Timestamp footer and logging
 if "Timestamp" in df["Name"].values:
     timestamp = df[df["Name"] == "Timestamp"]["Value"].iloc[-1]
-    st.caption(f"⏰ Last updated: {timestamp}")
+else:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+st.caption(f"⏰ Last updated: {timestamp}")
 
 if protocol == "Modbus":
     log_data("discharge_register_log.csv", registers_perform, log_row)

@@ -12,7 +12,7 @@ def handle_parameter_write_mqtt(df, selected_topic):
 
     MQTT_BROKER = "ecozen.ai"
     MQTT_PORT = 1883
-    MQTT_TOPIC = "/AC/1/{selected_topic}/Command"
+    MQTT_TOPIC = f"/AC/1/{selected_topic}/Command"
 
     try:
         with open('output.json', 'r') as f:

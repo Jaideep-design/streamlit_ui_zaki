@@ -7,7 +7,7 @@ from shared_state import latest_data, latest_data_lock
 
 def start_streaming(selected_topic):
     BROKER = "ecozen.ai"
-    TOPIC = "/AC/1/{selected_topic}/Datalog"
+    TOPIC = f"/AC/1/{selected_topic}/Datalog"
     CSV_PATH = "mqtt_logs_100.csv"
     dummydata_CSV_PATH = "mqtt_logs_11.csv"
     USE_DUMMY_DATA = False
