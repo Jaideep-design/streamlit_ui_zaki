@@ -30,6 +30,28 @@ if protocol == "Select Protocol":
     st.warning("Please select a communication protocol from the sidebar.")
     st.stop()
 
+# Placeholder for the second dropdown
+if protocol == "Modbus":
+    com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)])
+    st.write(f"You selected {com_port} for Modbus communication.")
+    
+elif protocol == "MQTT":
+    # Load topics from Excel file
+    try:
+        # Replace with your actual Excel file path
+        df = pd.read_excel("mqtt_topics.xlsx")  
+        if 'Topics' in df.columns:
+            topics = df['Topics'].dropna().tolist()
+            selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics)
+            st.write(f"You selected topic: {selected_topic}")
+        else:
+            st.sidebar.error("The Excel file must contain a 'Topics' column.")
+    except FileNotFoundError:
+        st.sidebar.error("Excel file with MQTT topics not found.")
+    except Exception as e:
+        st.sidebar.error(f"Error loading topics: {e}")
+
+
 # ------------------ READ PARAMETER SECTION ------------------ #
 st.header("\U0001F4E6 Inverter Read registers")
 
@@ -150,4 +172,4 @@ if protocol == "Modbus" and not df.empty:
     )
 
 elif protocol == "MQTT" and not df.empty:
-    handle_parameter_write_mqtt(df, simulate)
+    handle_parameter_write_mqtt(df)
