@@ -38,7 +38,7 @@ if 'mqtt_started' not in st.session_state:
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
-st_autorefresh(interval=10000, limit=None, key="auto_refresh")
+st_autorefresh(interval=30000, limit=None, key="auto_refresh")
 
 # ------------------ SIDEBAR - Protocol ------------------ #
 st.sidebar.header("Protocol Selection")
