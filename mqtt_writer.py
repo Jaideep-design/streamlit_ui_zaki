@@ -7,12 +7,12 @@ from shared_state import latest_data, latest_data_lock
 from data_reader import create_dataframe_from_mqtt
 
 
-def handle_parameter_write_mqtt(df):
+def handle_parameter_write_mqtt(df, selected_topic):
     st.subheader("✍️ Write Parameters to Inverter (MQTT)")
 
     MQTT_BROKER = "ecozen.ai"
     MQTT_PORT = 1883
-    MQTT_TOPIC = "/AC/1/EZMCISAC00001/Command"
+    MQTT_TOPIC = "/AC/1/{selected_topic}/Command"
 
     try:
         with open('output.json', 'r') as f:

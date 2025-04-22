@@ -15,7 +15,6 @@ from mqtt_writer import handle_parameter_write_mqtt
 from shared_state import get_latest_data
 from mqtt_logic import start_streaming
 
-
 # ------------------ CACHED FUNCTIONS ------------------ #
 @st.cache_data
 def cached_load_register_map():
@@ -23,18 +22,19 @@ def cached_load_register_map():
 
 @st.cache_data
 def load_mqtt_topics():
-    try:
-        df = pd.read_excel("mqtt_topics.xlsx")
-        if 'Topics' in df.columns:
-            return df['Topics'].dropna().tolist()
-        return []
-    except Exception:
-        return []
-
-# ------------------ BACKGROUND THREAD INIT ------------------ #
-if 'mqtt_started' not in st.session_state:
-    threading.Thread(target=start_streaming, daemon=True).start()
-    st.session_state.mqtt_started = True
+    return [
+        "EZMCISAC0001",
+        "EZMCISAC00002",
+        "EZMCISAC00003",
+        "EZMCISAC00004",
+        "EZMCISAC00005",
+        "EZMCISAC00006",
+        "EZMCISAC00007",
+        "EZMCISAC00008",
+        "EZMCISAC00009",
+        "EZMCISAC00010",
+        "EZMCISAC00011"
+    ]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
@@ -48,18 +48,22 @@ if protocol == "Select Protocol":
     st.warning("Please select a communication protocol from the sidebar.")
     st.stop()
 
-# MQTT topic selection
+# ------------------ MQTT Topic Selection ------------------ #
 selected_topic = None
 if protocol == "MQTT":
     topics = load_mqtt_topics()
     if topics:
-        selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics)
+        selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics, key="mqtt_topic")
         st.write(f"You selected topic: {selected_topic}")
+
+        if selected_topic and 'mqtt_started' not in st.session_state:
+            threading.Thread(target=start_streaming, args=(selected_topic,), daemon=True).start()
+            st.session_state.mqtt_started = True
     else:
-        st.sidebar.error("No MQTT topics found in the Excel file or failed to load.")
+        st.sidebar.error("No MQTT topics found.")
 
 elif protocol == "Modbus":
-    com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)])
+    com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
     st.write(f"You selected {com_port} for Modbus communication.")
 
 # ------------------ MAIN READ SECTION ------------------ #
@@ -83,6 +87,7 @@ if protocol == "MQTT":
         df = pd.DataFrame()
 else:
     df = df_modbus
+
 
 # ------------------ DISPLAY DATA ------------------ #
 col1, col2, col3 = st.columns(3)
@@ -145,4 +150,4 @@ if protocol == "Modbus" and not df.empty:
         create_dataframe_from_registers, simulate
     )
 elif protocol == "MQTT" and not df.empty:
-    handle_parameter_write_mqtt(df)
+    handle_parameter_write_mqtt(df, selected_topic)

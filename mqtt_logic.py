@@ -5,9 +5,9 @@ from Module1_mqtt_connection import connect_mqtt
 from Module3_mqtt_handler import on_message, on_connect, parse_and_update
 from shared_state import latest_data, latest_data_lock
 
-def start_streaming():
+def start_streaming(selected_topic):
     BROKER = "ecozen.ai"
-    TOPIC = "/AC/1/EZMCISAC00001/Datalog"
+    TOPIC = "/AC/1/{selected_topic}/Datalog"
     CSV_PATH = "mqtt_logs_100.csv"
     dummydata_CSV_PATH = "mqtt_logs_11.csv"
     USE_DUMMY_DATA = False

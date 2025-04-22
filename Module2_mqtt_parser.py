@@ -132,7 +132,7 @@ COLUMN_MAPPING = {
     'AC Voltage High': 'AC Voltage High',
     'Battery Equalization': 'Battery Equalization',
     'No Battery': 'No Battery',
-    'deviceTime': 'Timestamp',
+    'Timestamp': 'Timestamp',
     'CHG_DSCHG_PRIO': 'Charger source priority',
     'OP_PRIO': 'Output Source priority',
     'MODE_SEL': 'AC input range',
