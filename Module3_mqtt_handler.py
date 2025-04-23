@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from Module2_mqtt_parser import parse_packet, structure_for_ui
+from shared_state import update_activity
 
 CSV_PATH = "mqtt_logs_100.csv"
 
@@ -13,15 +14,31 @@ def save_to_csv(row_df, csv_path):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("✅ Connected to broker")
-        # userdata = client._userdata  # 👈 pull it manually
-        print(userdata) 
-        client.subscribe(userdata["topic"])
+        print(f"📦 Userdata: {userdata}")
+
+        new_topic = userdata.get("topic")
+        old_topic = userdata.get("current_topic")  # get previously tracked topic
+
+        if old_topic and old_topic != new_topic:
+            print(f"🔄 Unsubscribing from old topic: {old_topic}")
+            client.unsubscribe(old_topic)
+
+        print(f"📡 Subscribing to new topic: {new_topic}")
+        client.subscribe(new_topic)
+
+        # Update userdata with the new current topic
+        userdata["current_topic"] = new_topic
+        client.user_data_set(userdata)
+
     else:
         print(f"❌ Connection failed with code {rc}")
 
 def on_message(client, userdata, msg, latest_data, latest_data_lock):
-    print(f"📩 Message received {userdata["topic"]}")
+    print(f"📩 Message received {userdata.get('topic')}")
+    print(msg)
     raw_hex = msg.payload.decode('utf-8')
+    topic = msg.topic
+    update_activity(topic)
     
     full_row = parse_packet(raw_hex)
     # Round numeric values

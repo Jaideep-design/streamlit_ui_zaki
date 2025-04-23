@@ -12,7 +12,7 @@ from data_reader import (
 )
 from transform_data import handle_parameter_write
 from mqtt_writer import handle_parameter_write_mqtt
-from shared_state import get_latest_data
+from shared_state import get_latest_data, is_topic_online
 from mqtt_logic import start_streaming
 
 # ------------------ CACHED FUNCTIONS ------------------ #
@@ -38,7 +38,7 @@ def load_mqtt_topics():
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
-st_autorefresh(interval=30000, limit=None, key="auto_refresh")
+st_autorefresh(interval=5000, limit=None, key="auto_refresh")
 
 # ------------------ SIDEBAR - Protocol ------------------ #
 st.sidebar.header("Protocol Selection")
@@ -55,12 +55,27 @@ if protocol == "MQTT":
     if topics:
         selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics, key="mqtt_topic")
         st.write(f"You selected topic: {selected_topic}")
+        status = "🟢 Online" if is_topic_online(f"/AC/1/{selected_topic}/Datalog") else "🔴 Offline"
+        badge_color = "#d4edda" if "Online" in status else "#f8d7da"
+        text_color = "green" if "Online" in status else "red"
+        
+        st.markdown(f"""
+        <div style='background-color:{badge_color}; padding:8px 12px; margin-top:10px;
+                    border-radius:6px; font-weight:bold; font-size:15px;
+                    color:#000000; display:inline-block'>
+            {selected_topic} is <span style='color:{text_color};'>{status}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-        if selected_topic and 'mqtt_started' not in st.session_state:
+        if 'last_topic' not in st.session_state:
+            st.session_state.last_topic = None
+
+        if selected_topic != st.session_state.last_topic:
+            st.session_state.last_topic = selected_topic
             threading.Thread(target=start_streaming, args=(selected_topic,), daemon=True).start()
-            st.session_state.mqtt_started = True
     else:
         st.sidebar.error("No MQTT topics found.")
+
 
 elif protocol == "Modbus":
     com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
@@ -134,12 +149,17 @@ with col3:
         render_compact_table(table_chunks[1])
 
 # Timestamp footer and logging
-if "Timestamp" in df["Name"].values:
-    timestamp = df[df["Name"] == "Timestamp"]["Value"].iloc[-1]
-else:
+if protocol == "MQTT":
+    is_online = is_topic_online(f"/AC/1/{selected_topic}/Datalog")
+    if is_online and "Timestamp" in df["Name"].values:
+        timestamp = df[df["Name"] == "Timestamp"]["Value"].iloc[-1]
+    else:
+        timestamp = "N/A"
+elif protocol == "Modbus":
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 st.caption(f"⏰ Last updated: {timestamp}")
+
 
 if protocol == "Modbus":
     log_data("discharge_register_log.csv", registers_perform, log_row)

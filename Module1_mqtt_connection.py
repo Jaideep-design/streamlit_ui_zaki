@@ -15,4 +15,5 @@ def connect_mqtt(broker, topic, on_message_callback, on_connect_callback=None,us
     client.on_message = on_message_callback
     print("🚀 Connecting to broker...")
     client.connect(broker, 1883, 60)
-    client.loop_forever()
+    client.loop_start()  # 🔄 Non-blocking!
+    return client  # return the client so you can later disconnect it if needed

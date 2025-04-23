@@ -5,7 +5,13 @@ from Module1_mqtt_connection import connect_mqtt
 from Module3_mqtt_handler import on_message, on_connect, parse_and_update
 from shared_state import latest_data, latest_data_lock
 
+# Global clients
+mqtt_client = None
+current_topic = None
+
 def start_streaming(selected_topic):
+    global mqtt_client  # No need for current_topic now
+
     BROKER = "ecozen.ai"
     TOPIC = f"/AC/1/{selected_topic}/Datalog"
     CSV_PATH = "mqtt_logs_100.csv"
@@ -25,24 +31,37 @@ def start_streaming(selected_topic):
 
     if USE_DUMMY_DATA:
         print("🧪 Running in dummy CSV streaming mode...")
-
-        # ui_thread = threading.Thread(target=launch_ui, args=(column_names, get_latest_data), daemon=True)
-        # ui_thread.start()
-
         dummy_stream(dummydata_CSV_PATH)
 
     else:
         print("📡 Running in real MQTT mode...")
 
-        # ui_thread = threading.Thread(target=launch_ui, args=(column_names, get_latest_data), daemon=True)
-        # ui_thread.start()
+        if mqtt_client is not None:
+            # Get old topic from existing client's userdata (if available)
+            old_userdata = mqtt_client._userdata
+            old_topic = old_userdata.get("current_topic") if old_userdata else None
+
+            if old_topic:
+                print(f"🛑 Disconnecting from old topic: {old_topic}")
+                mqtt_client.unsubscribe(old_topic)
+
+            mqtt_client.loop_stop()
+            mqtt_client.disconnect()
+
+        # Setup updated userdata with new topic and tracking key
+        userdata = {
+            "topic": TOPIC,
+            "csv_path": CSV_PATH,
+            "current_topic": None  # Will be updated in on_connect
+        }
 
         on_message_callback = partial(on_message, latest_data=latest_data, latest_data_lock=latest_data_lock)
 
-        connect_mqtt(
+        mqtt_client = connect_mqtt(
             broker=BROKER,
             topic=TOPIC,
             on_message_callback=on_message_callback,
             on_connect_callback=on_connect,
-            userdata={"topic": TOPIC, "csv_path": CSV_PATH}
+            userdata=userdata
         )
+
