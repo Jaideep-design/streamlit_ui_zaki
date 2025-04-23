@@ -42,7 +42,7 @@ st_autorefresh(interval=5000, limit=None, key="auto_refresh")
 
 # ------------------ SIDEBAR - Protocol ------------------ #
 st.sidebar.header("Protocol Selection")
-protocol = st.sidebar.selectbox("Select Communication Protocol", ["Select Protocol", "Modbus", "MQTT"])
+protocol = st.sidebar.selectbox("Select Communication Protocol", ["MQTT", "Modbus"], index=0)
 
 if protocol == "Select Protocol":
     st.warning("Please select a communication protocol from the sidebar.")
@@ -149,6 +149,15 @@ with col3:
         render_compact_table(table_chunks[1])
 
 # Timestamp footer and logging
+st.markdown(f"""
+<div style='background-color:{badge_color}; padding:8px 12px; margin-top:10px;
+            border-radius:6px; font-weight:bold; font-size:15px;
+            color:#000000; display:inline-block'>
+    {selected_topic} is <span style='color:{text_color};'>{status}</span>
+</div>
+""", unsafe_allow_html=True)
+
+# ⏰ Last updated timestamp display right after status
 if protocol == "MQTT":
     is_online = is_topic_online(f"/AC/1/{selected_topic}/Datalog")
     if is_online and "Timestamp" in df["Name"].values:
@@ -158,7 +167,7 @@ if protocol == "MQTT":
 elif protocol == "Modbus":
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-st.caption(f"⏰ Last updated: {timestamp}")
+st.markdown(f"⏰ **Last updated:** {timestamp}")
 
 
 if protocol == "Modbus":
