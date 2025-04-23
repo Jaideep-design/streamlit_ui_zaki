@@ -20,7 +20,7 @@ def on_connect(client, userdata, flags, rc):
         print(f"❌ Connection failed with code {rc}")
 
 def on_message(client, userdata, msg, latest_data, latest_data_lock):
-    print("📩 Message received")
+    print(f"📩 Message received {userdata["topic"]}")
     raw_hex = msg.payload.decode('utf-8')
     
     full_row = parse_packet(raw_hex)
