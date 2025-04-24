@@ -33,7 +33,10 @@ def load_mqtt_topics():
         "EZMCISAC00008",
         "EZMCISAC00009",
         "EZMCISAC00010",
-        "EZMCISAC00011"
+        "EZMCISAC00011",
+        "EZMCISAC00012",
+        "EZMCISAC00013",
+        "EZMCISAC00014"
     ]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
