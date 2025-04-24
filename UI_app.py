@@ -102,7 +102,30 @@ if protocol == "MQTT":
         df = pd.DataFrame()
 else:
     df = df_modbus
+    
+# Use MQTT or Modbus
+if protocol == "MQTT":
+    mqtt_data = get_latest_data()
+    if mqtt_data:
+        df_mqtt = pd.DataFrame([mqtt_data])
+        df = df_mqtt.melt(var_name='Name', value_name='Value')
+    else:
+        st.warning("⚠️ No MQTT data received yet.")
+        df = pd.DataFrame()
+else:
+    df = df_modbus
 
+# Show Last Updated Time after df is defined
+if protocol == "MQTT":
+    is_online = is_topic_online(f"/AC/1/{selected_topic}/Datalog")
+    if is_online and not df.empty and "Timestamp" in df["Name"].values:
+        timestamp = df[df["Name"] == "Timestamp"]["Value"].iloc[-1]
+    else:
+        timestamp = "N/A"
+elif protocol == "Modbus":
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+st.markdown(f"⏰ **Last updated:** {timestamp}")
 
 # ------------------ DISPLAY DATA ------------------ #
 col1, col2, col3 = st.columns(3)
@@ -147,28 +170,6 @@ with col3:
     st.subheader(f"{protocol} Parameters - 2")
     if len(table_chunks) > 1:
         render_compact_table(table_chunks[1])
-
-# Timestamp footer and logging
-st.markdown(f"""
-<div style='background-color:{badge_color}; padding:8px 12px; margin-top:10px;
-            border-radius:6px; font-weight:bold; font-size:15px;
-            color:#000000; display:inline-block'>
-    {selected_topic} is <span style='color:{text_color};'>{status}</span>
-</div>
-""", unsafe_allow_html=True)
-
-# ⏰ Last updated timestamp display right after status
-if protocol == "MQTT":
-    is_online = is_topic_online(f"/AC/1/{selected_topic}/Datalog")
-    if is_online and "Timestamp" in df["Name"].values:
-        timestamp = df[df["Name"] == "Timestamp"]["Value"].iloc[-1]
-    else:
-        timestamp = "N/A"
-elif protocol == "Modbus":
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-st.markdown(f"⏰ **Last updated:** {timestamp}")
-
 
 if protocol == "Modbus":
     log_data("discharge_register_log.csv", registers_perform, log_row)
