@@ -16,7 +16,7 @@ def convert_to_little_Endian(val):
     return ((val & 0xFF) << 8) | ((val >> 8) & 0xFF)
 
 # -------------- Modbus Client Setup -------------- #
-simulate = False
+simulate = True
 client_sunnal = ModbusSerialClient(
     method="RTU",
     port='COM6',
