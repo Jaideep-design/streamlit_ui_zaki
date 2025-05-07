@@ -36,12 +36,13 @@ def load_mqtt_topics():
         "EZMCISAC00011",
         "EZMCISAC00012",
         "EZMCISAC00013",
-        "EZMCISAC00014"
+        "EZMCISAC00014",
+        "EZMCISAC00038"
     ]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
-st_autorefresh(interval=30000, limit=None, key="auto_refresh")
+st_autorefresh(interval=5000, limit=None, key="auto_refresh")
 
 # ------------------ SIDEBAR - Protocol ------------------ #
 st.sidebar.header("Protocol Selection")
