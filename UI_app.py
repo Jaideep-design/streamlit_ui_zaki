@@ -23,23 +23,7 @@ def cached_load_register_map():
 
 @st.cache_data
 def load_mqtt_topics():
-    return [
-        "EZMCISAC00001",
-        "EZMCISAC00002",
-        "EZMCISAC00003",
-        "EZMCISAC00004",
-        "EZMCISAC00005",
-        "EZMCISAC00006",
-        "EZMCISAC00007",
-        "EZMCISAC00008",
-        "EZMCISAC00009",
-        "EZMCISAC00010",
-        "EZMCISAC00011",
-        "EZMCISAC00012",
-        "EZMCISAC00013",
-        "EZMCISAC00014",
-        "EZMCISAC00038"
-    ]
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 51)]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
