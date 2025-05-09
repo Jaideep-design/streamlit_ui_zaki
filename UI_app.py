@@ -11,9 +11,10 @@ from data_reader import (
     build_modbus_write_command, simulate
 )
 from transform_data import handle_parameter_write
-from mqtt_writer import handle_parameter_write_mqtt
+from new_mqtt_writer import handle_parameter_write_mqtt
 from shared_state import get_latest_data, is_topic_online
 from mqtt_logic import start_streaming
+from presets_config import presets_config
 
 # ------------------ CACHED FUNCTIONS ------------------ #
 @st.cache_data
@@ -37,7 +38,6 @@ def load_mqtt_topics():
         "EZMCISAC00012",
         "EZMCISAC00013",
         "EZMCISAC00014",
-        "EZMCISAC00036",
         "EZMCISAC00038"
     ]
 
@@ -56,6 +56,8 @@ if protocol == "Select Protocol":
 # ------------------ MQTT Topic Selection ------------------ #
 selected_topic = None
 if protocol == "MQTT":
+    # User selects a preset
+    selected_preset = st.selectbox("Choose a Preset", ["None"] + list(presets_config.keys()))
     topics = load_mqtt_topics()
     if topics:
         selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics, key="mqtt_topic")
@@ -188,4 +190,4 @@ if protocol == "Modbus" and not df.empty:
         create_dataframe_from_registers, simulate
     )
 elif protocol == "MQTT" and not df.empty:
-    handle_parameter_write_mqtt(df, selected_topic)
+    handle_parameter_write_mqtt(selected_topic, selected_preset)
