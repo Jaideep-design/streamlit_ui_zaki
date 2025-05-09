@@ -112,8 +112,9 @@ def create_dataframe_from_mqtt(registers, latest_data):
     table_data, log_row = [], {}
 
     for item in registers:
+        reg_address = str(item["read_address"])  # Ensure it's a string to match latest_data keys
         name = item["name"]
-        value = latest_data.get(name)
+        value = latest_data.get(reg_address)
 
         if value is not None:
             # Apply signed and scale if needed
