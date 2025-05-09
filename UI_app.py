@@ -37,6 +37,7 @@ def load_mqtt_topics():
         "EZMCISAC00012",
         "EZMCISAC00013",
         "EZMCISAC00014",
+        "EZMCISAC00036",
         "EZMCISAC00038"
     ]
 
