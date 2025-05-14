@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May  6 10:56:25 2025
+Created on Fri May  9 17:28:35 2025
 
 @author: Admin
 """
@@ -10,11 +10,9 @@ import streamlit as st
 import time
 import json
 import re
-# from shared_state import latest_data, latest_data_lock
 from data_reader import create_dataframe_from_mqtt
 from presets_config import presets_config
 import threading
-# from mqtt_storage import mqtt_storage_state
 import mqtt_storage
 from datetime import datetime
 
@@ -26,7 +24,6 @@ def on_message_response(client, userdata, msg):
     try:
         raw_message = msg.payload.decode()
         match = re.search(r'"msgId"\s*:\s*"([^"]+)"\s*,\s*"rsp"\s*:\s*"(.+)"\s*}', raw_message, re.DOTALL)
-        # print("Match Payload", match)
         if not match:
             print("Payload format not recognized.")
             return
@@ -95,7 +92,7 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
     MQTT_TOPIC = f"/AC/1/{selected_topic}/Command"
 
     try:
-        with open('output.json', 'r') as f:
+        with open('new_outputs.json', 'r') as f:
             register_data = json.load(f)
             registers = register_data.get("registers", [])
     except Exception as e:
@@ -105,38 +102,88 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
     if not registers:
         st.info("No write parameters defined in output.json")
         return
-
-    # Collect read addresses from output.json
-    read_registers = [str(reg["read_address"]) for reg in registers if "read_address" in reg]
+   
+    # Identify registers with same read & write addresses
+    same_read_write_regs = {
+        str(reg["read_address"]): reg["name"]
+        for reg in registers
+        if "read_address" in reg and "write_address" in reg and reg["read_address"] == reg["write_address"]
+    }
+    
+    # Collect read addresses for registers NOT having same read/write
+    read_registers = [
+        str(reg["read_address"])
+        for reg in registers
+        if "read_address" in reg and not (
+            "write_address" in reg and reg["read_address"] == reg["write_address"]
+        )
+    ]
+    
+    # Add the rest (same read/write) to be read but handled differently
+    read_registers += list(same_read_write_regs.keys())
     
     # Construct the READ message
     read_command = f"READ**12345##1234567890,{','.join(read_registers)}"
-
+    
+    # Triggered by button
     if st.button("🔄 Read All Setting Parameters"):
         # MQTT setup
         command_client = mqtt.Client()
         command_client.on_message = on_message_response
         command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
     
-        # Subscribe to the response topic
+        # Subscribe to response topic
         subscribe_topic = f"/AC/1/{selected_topic}/Response"
         command_client.subscribe(subscribe_topic)
         command_client.loop_start()
     
-        # Publish the read request
+        # Publish the command
         publish_topic = f"/AC/1/{selected_topic}/Command"
         response_received.clear()
         command_client.publish(publish_topic, read_command)
-            
-        # Wait for response or timeout
+    
         if response_received.wait(timeout=15):
             st.success("✅ Response received from inverter.")
+    
         else:
             st.error("❌ Timeout: No response received from inverter.")
-        
+    
         command_client.loop_stop()
         command_client.disconnect()
-        
+
+    # Logic to read values using write addresses and map back to command names with 1 decimal precision
+    raw_response = mqtt_storage.mqtt_storage_state['mqtt_response_data']
+    response_data = {}
+    
+    for address, value in raw_response.items():
+        try:
+            # Convert value to float to handle potential decimal values
+            float_val = float(value)
+    
+            # Round the value to 1 decimal place to match your json precision
+            rounded_val = round(float_val, 1)
+    
+            # Handle swapped byte values for same read/write registers
+            if address in same_read_write_regs:
+                hex_val = f"{int(rounded_val):04X}"
+                swapped = hex_val[2:] + hex_val[:2]
+                transformed_value = int(swapped, 16)
+                rounded_val = transformed_value
+    
+            response_data[address] = rounded_val  # default to rounded value
+    
+            # Map back to command name if possible
+            matching_reg = next((reg for reg in registers if str(reg.get("read_address")) == address), None)
+            if matching_reg and "commands" in matching_reg:
+                # Reverse the command mapping: value → name (with rounded value)
+                rev_command_map = {round(float(v), 1): k for k, v in matching_reg["commands"].items()}
+                if rounded_val in rev_command_map:
+                    response_data[address] = rev_command_map[rounded_val]  # use the name instead of raw value
+    
+        except Exception as e:
+            response_data[address] = f"Error: {e}"
+
+            
     if mqtt_storage.mqtt_storage_state["last_update_time"]:
         time_diff = datetime.now() - mqtt_storage.mqtt_storage_state["last_update_time"]
         seconds_ago = int(time_diff.total_seconds())
@@ -154,8 +201,16 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
 
     st.markdown("---")
     
-    new_df, log_row = create_dataframe_from_mqtt(registers, mqtt_storage.mqtt_storage_state['mqtt_response_data'])
+    # Sort registers by 'Program No' if present and numeric
+    try:
+        registers.sort(key=lambda r: int(r.get("Program No", float('inf'))))
+    except Exception as e:
+        st.warning(f"⚠️ Could not sort by 'Program No': {e}")
+
+    
+    new_df, log_row = create_dataframe_from_mqtt(registers, response_data)
     df = new_df
+
 
     user_inputs = {}  # Collect user inputs for preset
 
@@ -170,10 +225,12 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
                 st.markdown(f"**{reg['name']}**")
             if is_preset:
                 st.caption("From preset")
+                
+            # Special caption for parameters controlled by RMU
+            if reg["name"] == "Low DC cut-off Voltage*":
+                st.caption("*This parameter is controlled by RMU")
 
         with col2:
-            # print(df[df['Name'].str.strip() == reg['name'].strip()])
-
             current_row = df[df['Name'] == reg['name']]
             # print(df)
             st.code(str(current_row.iloc[0]["Value"]) if not current_row.empty else "N/A")
@@ -181,13 +238,13 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
         selected_command = None
         write_val = None
         default_command = None
-
+        
         if selected_preset != "None" and selected_preset in presets_config:
             default_command = presets_config[selected_preset].get(reg["name"])
-
+        
         if "commands" in reg:
             with col3:
-                command_keys = list(reg["commands"].keys())
+                command_keys = ["None"] + list(reg["commands"].keys())
                 default_idx = command_keys.index(default_command) if default_command in command_keys else 0
                 selected_command = st.selectbox(
                     " ",
@@ -195,11 +252,12 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
                     index=default_idx,
                     key=f"cmd_{reg['name']}"
                 )
-                if reg["name"] in presets_config.get(selected_preset, {}):
+                if selected_command != "None":
                     user_inputs[reg["name"]] = {
                         "type": "command",
                         "value": selected_command
                     }
+
         else:
             with col3:
                 default_value = (
@@ -236,20 +294,22 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
         
                     command_client.on_message = on_message
                     command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-                    command_client.subscribe(f"/AC/1/{selected_topic}/Response")  
+                    command_client.subscribe(f"/AC/1/{selected_topic}/Response")
         
+                    # If a command is selected from the dropdown
                     if selected_command:
-                        hex_string = reg["commands"][selected_command]
-                        hex_clean = hex_string.replace(" ", "")
-                        register_hex = hex_clean[4:8]
-                        value_hex = hex_clean[8:12]
-                        reg_addr = int(register_hex, 16)
-                        value = int(value_hex, 16)
+                        reg_addr = int(reg["write_address"])
+                        value = int(reg["commands"][selected_command])
                         mqtt_message = f"UP#,{reg_addr:04}:{value:05}"
                         command_client.publish(MQTT_TOPIC, mqtt_message)
+        
+                    # If a value is typed manually
                     elif write_val is not None:
-                        mqtt_message = f"UP#,{int(reg['write_address']):04}:{int(write_val):05}"
+                        reg_addr = int(reg["write_address"])
+                        value = int(write_val)
+                        mqtt_message = f"UP#,{reg_addr:04}:{value:05}"
                         command_client.publish(MQTT_TOPIC, mqtt_message)
+        
                     else:
                         st.warning("⚠️ No valid input to send.")
                         return
@@ -308,21 +368,16 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
     
                     if entry["type"] == "command":
                         selected_command = entry["value"]
-                        hex_string = reg["commands"][selected_command]
-                        hex_clean = hex_string.replace(" ", "")
-                        register_hex = hex_clean[4:8]
-                        value_hex = hex_clean[8:12]
+                        value = int(reg["commands"][selected_command])
+                        write_pairs.append(f"{int(reg_address):04}:{value:05}")
     
-                        reg_addr = int(register_hex, 16)
-                        value = int(value_hex, 16)
-    
-                        write_pairs.append(f"{reg_addr:04}:{value:05}")
                         mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = selected_command
                         df.loc[df["Name"] == reg["name"], "Value"] = selected_command
     
                     elif entry["type"] == "value":
                         value = int(entry["value"])
                         write_pairs.append(f"{int(reg_address):04}:{value:05}")
+    
                         mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = value
                         df.loc[df["Name"] == reg["name"], "Value"] = value
     
@@ -335,3 +390,4 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
     
             except Exception as e:
                 st.error(f"⚠️ MQTT operation failed: {e}")
+

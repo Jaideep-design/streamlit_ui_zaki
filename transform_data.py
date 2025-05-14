@@ -23,7 +23,7 @@ def handle_parameter_write(df, client_sunnal, read_register, write_to_modbus_sla
         st.info("No write parameters defined in output.json")
         return
 
-    st.header("⚙️ Inverter Write Parameters")
+    st.header("⚙️ Inverter Setting Parameters")
     header_cols = st.columns([1, 1, 1, 1])
     with header_cols[0]: st.markdown("**Parameter**")
     with header_cols[1]: st.markdown("**Current Value**")

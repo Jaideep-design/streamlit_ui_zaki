@@ -33,7 +33,7 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"❌ Connection failed with code {rc}")
 
-def on_message(client, userdata, msg, latest_data, latest_data_lock):
+def on_message_stream(client, userdata, msg, latest_data, latest_data_lock):
     print(f"📩 Message received {userdata.get('topic')}")
     print(msg)
     raw_hex = msg.payload.decode('utf-8')

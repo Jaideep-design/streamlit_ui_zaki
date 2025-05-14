@@ -27,7 +27,7 @@ def load_mqtt_topics():
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
-st_autorefresh(interval=5000, limit=None, key="auto_refresh")
+st_autorefresh(interval=10000, limit=None, key="auto_refresh")
 
 # ------------------ SIDEBAR - Protocol ------------------ #
 st.sidebar.header("Protocol Selection")
@@ -73,7 +73,7 @@ elif protocol == "Modbus":
     st.write(f"You selected {com_port} for Modbus communication.")
 
 # ------------------ MAIN READ SECTION ------------------ #
-st.header("📦 Inverter Read Registers")
+st.header("📦 Inverter Live Parameters")
 
 registers_perform = cached_load_register_map()
 if not registers_perform:
@@ -119,7 +119,7 @@ elif protocol == "Modbus":
 st.markdown(f"⏰ **Last updated:** {timestamp}")
 
 # ------------------ DISPLAY DATA ------------------ #
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 def display_bitflags_side_by_side(bitflag_rows):
     for i in range(0, len(bitflag_rows), 2):
@@ -147,20 +147,20 @@ def render_compact_table(df):
 bitflag_df = df[df["Name"].isin(bitflag_items)]
 if not bitflag_df.empty:
     with col1:
+        st.subheader("Fault and Alarm Codes")
         display_bitflags_side_by_side(bitflag_df.to_dict("records"))
 
+# Remove bitflag rows from df before splitting into table chunks
+non_bitflag_df = df[~df["Name"].isin(bitflag_items + ["Timestamp"])]
+
+# Chunk the remaining rows (non-bitflag) for table display
 chunk_size = 14
-table_chunks = [df[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
+table_chunks = [non_bitflag_df[i:i + chunk_size] for i in range(0, len(non_bitflag_df), chunk_size)]
 
 with col2:
-    st.subheader(f"{protocol} Parameters - 1")
+    st.subheader("Live Parameters")
     if len(table_chunks) > 0:
         render_compact_table(table_chunks[0])
-
-with col3:
-    st.subheader(f"{protocol} Parameters - 2")
-    if len(table_chunks) > 1:
-        render_compact_table(table_chunks[1])
 
 if protocol == "Modbus":
     log_data("discharge_register_log.csv", registers_perform, log_row)
