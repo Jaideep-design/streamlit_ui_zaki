@@ -14,14 +14,14 @@ import pandas as pd
 # url_2 = r"C:\Users\Admin\Desktop\Inverter_UI\Solar_AC_data_dictionary_version_1_deye_updated.xlsx"
 url = "https://raw.githubusercontent.com/Jaideep-design/Streamlit_UI/main/Solar_AC_data_dictionary_version_3.xlsx"
 df_dict = pd.read_excel(url, header=1)
-df_dict_deye = pd.read_excel(url_2, header=1)
+# df_dict_deye = pd.read_excel(url_2, header=1)
 
-def parse_packet_deye(raw_hex_deye: str) -> dict:
-    try:
-        df_out = mqtt_map.process_all_registers(df_dict_deye, raw_hex_deye)
-        return df_out
-    except Exception as e:
-        return {"Error": str(e)}
+# def parse_packet_deye(raw_hex_deye: str) -> dict:
+#     try:
+#         df_out = mqtt_map.process_all_registers(df_dict_deye, raw_hex_deye)
+#         return df_out
+#     except Exception as e:
+#         return {"Error": str(e)}
     
 def parse_packet(raw_hex: str) -> dict:
     try:
