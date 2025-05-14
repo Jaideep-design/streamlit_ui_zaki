@@ -2,15 +2,15 @@ import time
 import pandas as pd
 from functools import partial
 from Module1_mqtt_connection import connect_mqtt
-from Module3_mqtt_handler import on_message, on_connect, parse_and_update
+from Module3_mqtt_handler import on_message_stream, on_connect, parse_and_update
 from shared_state import latest_data, latest_data_lock
 
 # Global clients
-mqtt_client = None
+streaming_client = None
 current_topic = None
 
 def start_streaming(selected_topic):
-    global mqtt_client  # No need for current_topic now
+    global streaming_client  # No need for current_topic now
 
     BROKER = "ecozen.ai"
     TOPIC = f"/AC/1/{selected_topic}/Datalog"
@@ -36,17 +36,17 @@ def start_streaming(selected_topic):
     else:
         print("📡 Running in real MQTT mode...")
 
-        if mqtt_client is not None:
+        if streaming_client is not None:
             # Get old topic from existing client's userdata (if available)
-            old_userdata = mqtt_client._userdata
+            old_userdata = streaming_client._userdata
             old_topic = old_userdata.get("current_topic") if old_userdata else None
 
             if old_topic:
                 print(f"🛑 Disconnecting from old topic: {old_topic}")
-                mqtt_client.unsubscribe(old_topic)
+                streaming_client.unsubscribe(old_topic)
 
-            mqtt_client.loop_stop()
-            mqtt_client.disconnect()
+            streaming_client.loop_stop()
+            streaming_client.disconnect()
 
         # Setup updated userdata with new topic and tracking key
         userdata = {
@@ -55,9 +55,9 @@ def start_streaming(selected_topic):
             "current_topic": None  # Will be updated in on_connect
         }
 
-        on_message_callback = partial(on_message, latest_data=latest_data, latest_data_lock=latest_data_lock)
+        on_message_callback = partial(on_message_stream, latest_data=latest_data, latest_data_lock=latest_data_lock)
 
-        mqtt_client = connect_mqtt(
+        streaming_client = connect_mqtt(
             broker=BROKER,
             topic=TOPIC,
             on_message_callback=on_message_callback,

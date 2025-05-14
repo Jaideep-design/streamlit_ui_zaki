@@ -120,7 +120,7 @@ def create_dataframe_from_mqtt(registers, latest_data):
             # Apply signed and scale if needed
             if item.get("signed", False):
                 value = ConvertToSignedInt(value)
-            value *= item.get("scale", 1)
+            # value *= item.get("scale", 1)
 
             table_data.append({
                 "Name": name,

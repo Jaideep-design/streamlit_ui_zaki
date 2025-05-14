@@ -87,7 +87,7 @@ def process_all_registers(df_dict, sample_packet):
             df_out[row['Short name']] = None
     # df_out = process_res2_flags(df_out)
     df_out["BATT_W"] = df_out["BATT_V"] * df_out["BATT_I"]
-    df_out = apply_bitfield_flags(df_out, "RES2", RES2_FLAGS, bit_width=3)
+    df_out = apply_bitfield_flags(df_out, "RES2", RES2_FLAGS, bit_width=3) 
     df_out = apply_bitfield_flags(df_out, "FLT", FLT_FLAGS)
     df_out = apply_bitfield_flags(df_out, "ALM", ALM_FLAGS)
     df_out = apply_bitfield_flags(df_out, "BIN_STAT", BIN_STAT_FLAGS)
