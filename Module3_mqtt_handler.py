@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from Module2_mqtt_parser import parse_packet, structure_for_ui
-from shared_state import update_activity
+from shared_state_UI import update_activity
 
 CSV_PATH = "mqtt_logs_100.csv"
 

@@ -3,7 +3,7 @@ import pandas as pd
 from functools import partial
 from Module1_mqtt_connection import connect_mqtt
 from Module3_mqtt_handler import on_message_stream, on_connect, parse_and_update
-from shared_state import latest_data, latest_data_lock
+from shared_state_UI import latest_data, latest_data_lock
 
 # Global clients
 streaming_client = None
