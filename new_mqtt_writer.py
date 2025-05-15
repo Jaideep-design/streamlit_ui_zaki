@@ -125,73 +125,75 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
     # Construct the READ message
     read_command = f"READ**12345##1234567890,{','.join(read_registers)}"
     
+    # Create two columns side by side for the buttons
+    button_col1, spacer, button_col2 = st.columns([2, 3, 1])
+    
     # Triggered by button
-    if st.button("🔄 Read All Setting Parameters"):
-        # MQTT setup
-        command_client = mqtt.Client()
-        command_client.on_message = on_message_response
-        command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    with button_col1:
+        if st.button("🔄 Read All Setting Parameters"):
+            # MQTT setup
+            command_client = mqtt.Client()
+            command_client.on_message = on_message_response
+            command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        
+            # Subscribe to response topic
+            subscribe_topic = f"/AC/1/{selected_topic}/Response"
+            command_client.subscribe(subscribe_topic)
+            command_client.loop_start()
+        
+            # Publish the command
+            publish_topic = f"/AC/1/{selected_topic}/Command"
+            response_received.clear()
+            command_client.publish(publish_topic, read_command)
+        
+            if response_received.wait(timeout=15):
+                st.success("✅ Response received from inverter.")
+        
+            else:
+                st.error("❌ Timeout: No response received from inverter.")
+        
+            command_client.loop_stop()
+            command_client.disconnect()
     
-        # Subscribe to response topic
-        subscribe_topic = f"/AC/1/{selected_topic}/Response"
-        command_client.subscribe(subscribe_topic)
-        command_client.loop_start()
+        # Logic to read values using write addresses and map back to command names with 1 decimal precision
+        raw_response = mqtt_storage.mqtt_storage_state['mqtt_response_data']
+        response_data = {}
+        
+        for address, value in raw_response.items():
+            try:
+                # Convert value to float to handle potential decimal values
+                float_val = float(value)
+        
+                # Round the value to 1 decimal place to match your json precision
+                rounded_val = round(float_val, 1)
+        
+                # Handle swapped byte values for same read/write registers
+                if address in same_read_write_regs:
+                    hex_val = f"{int(rounded_val):04X}"
+                    swapped = hex_val[2:] + hex_val[:2]
+                    transformed_value = int(swapped, 16)
+                    rounded_val = transformed_value
+        
+                response_data[address] = rounded_val  # default to rounded value
+        
+                # Map back to command name if possible
+                matching_reg = next((reg for reg in registers if str(reg.get("read_address")) == address), None)
+                if matching_reg and "commands" in matching_reg:
+                    # Reverse the command mapping: value → name (with rounded value)
+                    rev_command_map = {round(float(v), 1): k for k, v in matching_reg["commands"].items()}
+                    if rounded_val in rev_command_map:
+                        response_data[address] = rev_command_map[rounded_val]  # use the name instead of raw value
+        
+            except Exception as e:
+                response_data[address] = f"Error: {e}"
     
-        # Publish the command
-        publish_topic = f"/AC/1/{selected_topic}/Command"
-        response_received.clear()
-        command_client.publish(publish_topic, read_command)
-    
-        if response_received.wait(timeout=15):
-            st.success("✅ Response received from inverter.")
-    
+                
+        if mqtt_storage.mqtt_storage_state["last_update_time"]:
+            time_diff = datetime.now() - mqtt_storage.mqtt_storage_state["last_update_time"]
+            seconds_ago = int(time_diff.total_seconds())
+            st.info(f"📅 Last updated at: {mqtt_storage.mqtt_storage_state['last_update_time'].strftime('%Y-%m-%d %H:%M:%S')} ({seconds_ago} seconds ago)")
         else:
-            st.error("❌ Timeout: No response received from inverter.")
-    
-        command_client.loop_stop()
-        command_client.disconnect()
-
-    # Logic to read values using write addresses and map back to command names with 1 decimal precision
-    raw_response = mqtt_storage.mqtt_storage_state['mqtt_response_data']
-    response_data = {}
-    
-    for address, value in raw_response.items():
-        try:
-            # Convert value to float to handle potential decimal values
-            float_val = float(value)
-    
-            # Round the value to 1 decimal place to match your json precision
-            rounded_val = round(float_val, 1)
-    
-            # Handle swapped byte values for same read/write registers
-            if address in same_read_write_regs:
-                hex_val = f"{int(rounded_val):04X}"
-                swapped = hex_val[2:] + hex_val[:2]
-                transformed_value = int(swapped, 16)
-                rounded_val = transformed_value
-    
-            response_data[address] = rounded_val  # default to rounded value
-    
-            # Map back to command name if possible
-            matching_reg = next((reg for reg in registers if str(reg.get("read_address")) == address), None)
-            if matching_reg and "commands" in matching_reg:
-                # Reverse the command mapping: value → name (with rounded value)
-                rev_command_map = {round(float(v), 1): k for k, v in matching_reg["commands"].items()}
-                if rounded_val in rev_command_map:
-                    response_data[address] = rev_command_map[rounded_val]  # use the name instead of raw value
-    
-        except Exception as e:
-            response_data[address] = f"Error: {e}"
-
-            
-    if mqtt_storage.mqtt_storage_state["last_update_time"]:
-        time_diff = datetime.now() - mqtt_storage.mqtt_storage_state["last_update_time"]
-        seconds_ago = int(time_diff.total_seconds())
-        st.info(f"📅 Last updated at: {mqtt_storage.mqtt_storage_state['last_update_time'].strftime('%Y-%m-%d %H:%M:%S')} ({seconds_ago} seconds ago)")
-    else:
-        st.warning("⚠️ No update has been received yet.")
-
-
+            st.warning("⚠️ No update has been received yet.")
 
     header_cols = st.columns([1, 1, 1, 1])
     with header_cols[0]: st.markdown("**Parameter**")
@@ -344,50 +346,51 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
                 st.markdown(f"{reg['range'][0]} to {reg['range'][1]}")
             else:
                 st.markdown(" ")
-
+                
     # 🚀 Apply preset button at the end
-    if selected_preset != "None" and user_inputs:
-        if st.button("✅ Apply Preset"):
-            command_client = mqtt.Client()
-            command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    
-            try:
-                def on_publish(client, userdata, mid):
-                    st.info(f"📤 Message published, MID: {mid}")
-    
-                command_client.on_publish = on_publish
-    
-                write_pairs = []
-    
-                for reg in registers:
-                    if reg["name"] not in user_inputs:
-                        continue
-    
-                    reg_address = reg.get("write_address")
-                    entry = user_inputs[reg["name"]]
-    
-                    if entry["type"] == "command":
-                        selected_command = entry["value"]
-                        value = int(reg["commands"][selected_command])
-                        write_pairs.append(f"{int(reg_address):04}:{value:05}")
-    
-                        mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = selected_command
-                        df.loc[df["Name"] == reg["name"], "Value"] = selected_command
-    
-                    elif entry["type"] == "value":
-                        value = int(entry["value"])
-                        write_pairs.append(f"{int(reg_address):04}:{value:05}")
-    
-                        mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = value
-                        df.loc[df["Name"] == reg["name"], "Value"] = value
-    
-                if write_pairs:
-                    mqtt_message = f"UP#,{','.join(write_pairs)}"
-                    command_client.publish(MQTT_TOPIC, mqtt_message)
-                    st.success("✅ All preset values/commands published at once!")
-    
-                command_client.disconnect()
-    
-            except Exception as e:
-                st.error(f"⚠️ MQTT operation failed: {e}")
+    with button_col2:
+        if selected_preset != "None" and user_inputs:
+            if st.button("✅ Apply Preset"):
+                command_client = mqtt.Client()
+                command_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        
+                try:
+                    def on_publish(client, userdata, mid):
+                        st.info(f"📤 Message published, MID: {mid}")
+        
+                    command_client.on_publish = on_publish
+        
+                    write_pairs = []
+        
+                    for reg in registers:
+                        if reg["name"] not in user_inputs:
+                            continue
+        
+                        reg_address = reg.get("write_address")
+                        entry = user_inputs[reg["name"]]
+        
+                        if entry["type"] == "command":
+                            selected_command = entry["value"]
+                            value = int(reg["commands"][selected_command])
+                            write_pairs.append(f"{int(reg_address):04}:{value:05}")
+        
+                            mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = selected_command
+                            df.loc[df["Name"] == reg["name"], "Value"] = selected_command
+        
+                        elif entry["type"] == "value":
+                            value = int(entry["value"])
+                            write_pairs.append(f"{int(reg_address):04}:{value:05}")
+        
+                            mqtt_storage.mqtt_storage_state['mqtt_response_data'][reg["name"]] = value
+                            df.loc[df["Name"] == reg["name"], "Value"] = value
+        
+                    if write_pairs:
+                        mqtt_message = f"UP#,{','.join(write_pairs)}"
+                        command_client.publish(MQTT_TOPIC, mqtt_message)
+                        st.success("✅ All preset values/commands published at once!")
+        
+                    command_client.disconnect()
+        
+                except Exception as e:
+                    st.error(f"⚠️ MQTT operation failed: {e}")
 
