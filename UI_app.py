@@ -12,7 +12,7 @@ from data_reader import (
 )
 from transform_data import handle_parameter_write
 from new_mqtt_writer import handle_parameter_write_mqtt
-from shared_state import get_latest_data, is_topic_online
+from shared_state_UI import get_latest_data, is_topic_online
 from mqtt_logic import start_streaming
 from presets_config import presets_config
 
