@@ -11,6 +11,7 @@ import pandas as pd
 import warnings
 import sys
 import os
+import uuid
 
 warnings.filterwarnings('ignore')
 try:
@@ -26,8 +27,12 @@ if project_root not in sys.path:
 
 from utils import shared_state
 
-# Auto-refresh the app every 5 seconds
-st_autorefresh(interval=10000, limit=None, key="auto_refresh")
+# Manual refresh button
+if st.button("REFRESH"):
+    unique_key = str(uuid.uuid4())  # generate a new key every time
+    st_autorefresh(interval=1000, limit=1, key=unique_key)  # 1 second interval, reruns only once
+
+st.write("Last updated at:", time.strftime("%Y-%m-%d %H:%M:%S"))
 
 # # === Global store for background thread
 # shared_response = {"data": {}, "timestamp": None}
@@ -108,16 +113,20 @@ def start_mqtt(userdata):
     client.loop_start()
 
 def publisher_loop(userdata):
-    while True:
-        if client_connected.is_set():
-            print("\nSending request...")
-            client.publish(userdata['publish_topic'], DEVICE_MESSAGE)
-            if not response_received.wait(timeout=15):
-                print("No response within timeout.")
-            response_received.clear()
-            time.sleep(5)
+    if client_connected.wait(timeout=10):  
+        time.sleep(1)  
+        print("\nSending request...")
+        client.publish(userdata['publish_topic'], DEVICE_MESSAGE)
+        if not response_received.wait(timeout=15):
+            print("No response within timeout.")
+        else:
+            print("Response received successfully.")
+        response_received.clear()
+    else:
+        print("MQTT client not connected in time.")
+            
 
-if st.button("Start Device"):
+if st.button("Read Parameters"):
     with st.spinner("Initializing device..."):
         userdata = {
             'device': device,
@@ -127,7 +136,7 @@ if st.button("Start Device"):
 
         threading.Thread(target=start_mqtt, args=(userdata,), daemon=True).start()
         threading.Thread(target=publisher_loop, args=(userdata,), daemon=True).start()
-        st.success(f"Device {device} started and publishing every 5 seconds!")
+        st.success(f"Device {device} connected and click REFRESH button to display!")
 
 
 # === Display shared response
