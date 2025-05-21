@@ -25,7 +25,7 @@ def update_activity(topic):
     with activity_lock:
         last_mqtt_activity[topic] = time.time()
 
-def is_topic_online(topic, threshold=30):  # seconds
+def is_topic_online(topic, threshold=120):  # seconds
     with activity_lock:
         last_seen = last_mqtt_activity.get(topic, 0)
         return (time.time() - last_seen) < threshold
