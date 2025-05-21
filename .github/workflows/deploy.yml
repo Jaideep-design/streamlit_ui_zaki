@@ -1,0 +1,30 @@
+name: Run MQTT Topic Loader
+
+on:
+  push:
+    branches: [main]  # Or replace with the branch you use
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    env:
+      GCP_SERVICE_ACCOUNT_KEY_BASE64: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY_BASE64 }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the Python script
+        run: |
+          python UI_app.py  
