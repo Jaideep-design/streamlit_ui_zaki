@@ -17,7 +17,6 @@ from mqtt_logic import start_streaming
 from presets_config import presets_config
 
 # ------------------ CACHED FUNCTIONS ------------------ #
-@st.cache_data
 def cached_load_register_map():
     return load_register_map()
 
