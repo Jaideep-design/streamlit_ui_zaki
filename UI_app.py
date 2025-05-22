@@ -17,67 +17,13 @@ from mqtt_logic import start_streaming
 from presets_config import presets_config
 
 # ------------------ CACHED FUNCTIONS ------------------ #
+@st.cache_data
 def cached_load_register_map():
     return load_register_map()
 
-# from dotenv import load_dotenv
-import os
-import json
-import base64
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-# # Load .env variables
-# load_dotenv()
-
+@st.cache_data
 def load_mqtt_topics():
-    # Load Google service account credentials from environment variable (GitHub secret)
-    credentials_base64 = os.environ["GCP_SERVICE_ACCOUNT_KEY_BASE64"]
-    credentials_json = base64.b64decode(credentials_base64).decode("utf-8")
-    credentials_dict = json.loads(credentials_json)
-
-    # Define the scopes required to access Google Sheets
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ]
-
-    # Authenticate using the service account credentials
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
-    client = gspread.authorize(creds)
-
-    # Open the Google Sheet (replace with the actual sheet name)
-    sheet = client.open("Execution Checklists/Tracker - Solar AC").worksheet("Installation Tracker") # You can also use .worksheet('Sheet1')
-
-    # Read all rows as dictionaries
-    data = sheet.get_all_records()  # Returns a list of dicts
-
-    # Convert to a DataFrame
-    df = pd.DataFrame(data)
-    
-    # Clean and extract topic IDs
-    topic_ids = (
-        df['Master Controller SNo']
-        .astype(str)                       # Ensure all are strings
-        .str.strip()                       # Remove leading/trailing spaces
-        .loc[lambda x: x != '']            # Remove empty strings
-        .tolist()                          # Convert to list
-    )
-    
-    topic_names = (
-        df['Name']
-        .astype(str)                       # Ensure all are strings
-        .tolist()                          # Convert to list
-    )
-
-    # Return a list of (Device ID, Device Name)
-    return topic_ids,topic_names
-    
-# @st.cache_data
-# def load_mqtt_topics():
-#     return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 51)]
-
-
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 51)]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
@@ -94,33 +40,21 @@ if protocol == "Select Protocol":
 # ------------------ MQTT Topic Selection ------------------ #
 selected_topic = None
 if protocol == "MQTT":
+    # User selects a preset
     selected_preset = st.selectbox("Choose a Preset", ["None"] + list(presets_config.keys()))
-
-    topics, topic_names = load_mqtt_topics()
-
+    topics = load_mqtt_topics()
     if topics:
-        # Map topic IDs to display names
-        topic_display_map = dict(zip(topics, topic_names))
-
-        # Show names in dropdown, return actual topic ID
-        selected_topic = st.sidebar.selectbox(
-            "Select MQTT Topic",
-            topics,
-            format_func=lambda x: topic_display_map.get(x, x),  # Display name
-            key="mqtt_topic"
-        )
-
-        st.write(f"You selected topic: {selected_topic} ({topic_display_map.get(selected_topic, 'Unknown')})")
-
+        selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics, key="mqtt_topic")
+        st.write(f"You selected topic: {selected_topic}")
         status = "🟢 Online" if is_topic_online(f"/AC/1/{selected_topic}/Datalog") else "🔴 Offline"
         badge_color = "#d4edda" if "Online" in status else "#f8d7da"
         text_color = "green" if "Online" in status else "red"
-
+        
         st.markdown(f"""
         <div style='background-color:{badge_color}; padding:8px 12px; margin-top:10px;
                     border-radius:6px; font-weight:bold; font-size:15px;
                     color:#000000; display:inline-block'>
-            {selected_topic} ({topic_display_map.get(selected_topic, 'Unknown')}) is <span style='color:{text_color};'>{status}</span>
+            {selected_topic} is <span style='color:{text_color};'>{status}</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -137,7 +71,6 @@ if protocol == "MQTT":
 elif protocol == "Modbus":
     com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
     st.write(f"You selected {com_port} for Modbus communication.")
-
 # ------------------ MAIN READ SECTION ------------------ #
 st.header("📦 Inverter Live Parameters")
 
