@@ -26,7 +26,9 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from utils import shared_state
-
+def load_mqtt_topics():
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 61)]
+    
 # Manual refresh button
 if st.button("REFRESH"):
     unique_key = str(uuid.uuid4())  # generate a new key every time
@@ -89,12 +91,7 @@ def render_compact_table_with_buttons(df, key_prefix="btn"):
 # === Streamlit UI ===
 st.title("MQTT Device Monitor")
 
-devices = [
-    "EZMCISAC00001", "EZMCISAC00002", "EZMCISAC00003", "EZMCISAC00004",
-    "EZMCISAC00005", "EZMCISAC00006", "EZMCISAC00007", "EZMCISAC00008",
-    "EZMCISAC00009", "EZMCISAC00010", "EZMCISAC00011", "EZMCISAC00012",
-    "EZMCISAC00013", "EZMCISAC00014"
-]
+devices = load_mqtt_topics()
 
 device = st.selectbox("Select Device", devices)
 
