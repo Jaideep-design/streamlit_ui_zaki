@@ -58,10 +58,10 @@
       "Program No": 9,
       "name": "Output Frequency",
       "bytes": 2,
-      "description": "50: 50Hz/default (01), 60: 60Hz (00) ",
+      "description": "50: 50Hz/default (00), 60: 60Hz (01) ",
       "commands": {
-        "50": 1,
-        "60": 0
+        "50": 0,
+        "60": 1
       }
     },
     {
