@@ -2,7 +2,7 @@ name: Run MQTT Topic Loader
 
 on:
   push:
-    branches: [main]  # Or replace with the branch you use
+    branches: [main]
 
 jobs:
   run-script:
@@ -25,6 +25,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Decode and write GCP service account key
+        run: |
+          echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY_BASE64 }}" | base64 -d > key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/key.json" >> $GITHUB_ENV
+
       - name: Run the Python script
         run: |
-          python UI_app.py  
+          python UI_app.py
