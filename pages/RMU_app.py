@@ -106,6 +106,7 @@ def publisher_loop(userdata):
 
 if st.button("Read Parameters"):
     with st.spinner("Initializing device..."):
+        shared_state.shared_response.clear()  # clear cached response
         userdata = {
             'device': device,
             'subscribe_topic': subscribe_topic,
@@ -114,13 +115,13 @@ if st.button("Read Parameters"):
 
         mqtt_ready.clear()
         response_received.clear()
+        client_connected.clear()  # important to clear this too
 
-        # Start MQTT client thread (subscribe)
+        # Start MQTT client thread
         threading.Thread(target=start_mqtt, args=(userdata,), daemon=True).start()
 
-        # Wait until MQTT client is ready (connected & subscribed)
+        # Wait for MQTT to connect & subscribe
         if mqtt_ready.wait(timeout=5):
-            # Now start publisher
             publisher_thread = threading.Thread(target=publisher_loop, args=(userdata,), daemon=True)
             publisher_thread.start()
             publisher_thread.join()
@@ -129,15 +130,15 @@ if st.button("Read Parameters"):
             if response_received.wait(timeout=15):
                 st.success("Parameters received successfully.")
             else:
-                st.error("Timeout: No response received.")
+                st.error("Device is offline or not responding.")
         else:
-            st.error("MQTT client failed to connect.")
+            st.error("MQTT client failed to connect to broker.")
 
 
 # === Display shared response
 resp = shared_state.shared_response
 # Display updated response
-if resp["data"]:
+if resp.get("data"):
     # Mapping for readable labels
     param_mapping = {
         "P1": "Set Loop_Time",
