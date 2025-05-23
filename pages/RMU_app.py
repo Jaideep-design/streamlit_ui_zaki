@@ -2,7 +2,6 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import paho.mqtt.client as mqtt
 from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
 import threading
 import ast
 import json
@@ -11,7 +10,6 @@ import pandas as pd
 import warnings
 import sys
 import os
-import uuid
 
 warnings.filterwarnings('ignore')
 try:
@@ -26,18 +24,9 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from utils import shared_state
+@st.cache_data
 def load_mqtt_topics():
-    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 61)]
-    
-# Manual refresh button
-if st.button("REFRESH"):
-    unique_key = str(uuid.uuid4())  # generate a new key every time
-    st_autorefresh(interval=1000, limit=1, key=unique_key)  # 1 second interval, reruns only once
-
-st.write("Last updated at:", time.strftime("%Y-%m-%d %H:%M:%S"))
-
-# # === Global store for background thread
-# shared_response = {"data": {}, "timestamp": None}
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 300)]
 
 # === MQTT Configuration
 BROKER = "ecozen.ai"
@@ -47,6 +36,7 @@ DEVICE_MESSAGE = "#PARGET&"
 # === Shared flags
 client_connected = threading.Event()
 response_received = threading.Event()
+mqtt_ready = threading.Event()
 
 # === MQTT Client
 client = mqtt.Client()
@@ -54,15 +44,12 @@ client = mqtt.Client()
 # === MQTT Callbacks ===
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
-        print(f"Connected to MQTT broker for {userdata['device']}")
-        client_connected.set()
-        result, _ = client.subscribe(userdata['subscribe_topic'])
-        if result != mqtt.MQTT_ERR_SUCCESS:
-            print(f"Subscription failed: {mqtt.error_string(result)}")
-        else:
-            print(f"Subscribed to {userdata['subscribe_topic']}")
+        print("Connected successfully")
+        client.subscribe(userdata['subscribe_topic'])
+        mqtt_ready.set()           # Allows main thread to proceed
+        client_connected.set()     # Allows publisher thread to proceed
     else:
-        print(f"Failed to connect. Code: {rc}")
+        print(f"Connection failed with code {rc}")
 
 def on_message(client, userdata, msg):
     try:
@@ -71,7 +58,6 @@ def on_message(client, userdata, msg):
         data = ast.literal_eval(payload.replace('"', "'"))
         parsed_data = dict(item.split(":") for item in data["rsp"].split(",") if item)
         shared_state.shared_response["data"] = parsed_data
-        shared_state.shared_response["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"Latest Response Updated: {shared_state.shared_response}")
         response_received.set()
     except Exception as e:
@@ -114,11 +100,6 @@ def publisher_loop(userdata):
         time.sleep(1)  
         print("\nSending request...")
         client.publish(userdata['publish_topic'], DEVICE_MESSAGE)
-        if not response_received.wait(timeout=15):
-            print("No response within timeout.")
-        else:
-            print("Response received successfully.")
-        response_received.clear()
     else:
         print("MQTT client not connected in time.")
             
@@ -131,9 +112,26 @@ if st.button("Read Parameters"):
             'publish_topic': publish_topic
         }
 
+        mqtt_ready.clear()
+        response_received.clear()
+
+        # Start MQTT client thread (subscribe)
         threading.Thread(target=start_mqtt, args=(userdata,), daemon=True).start()
-        threading.Thread(target=publisher_loop, args=(userdata,), daemon=True).start()
-        st.success(f"Device {device} connected and click REFRESH button to display!")
+
+        # Wait until MQTT client is ready (connected & subscribed)
+        if mqtt_ready.wait(timeout=5):
+            # Now start publisher
+            publisher_thread = threading.Thread(target=publisher_loop, args=(userdata,), daemon=True)
+            publisher_thread.start()
+            publisher_thread.join()
+
+            # Wait for response
+            if response_received.wait(timeout=15):
+                st.success("Parameters received successfully.")
+            else:
+                st.error("Timeout: No response received.")
+        else:
+            st.error("MQTT client failed to connect.")
 
 
 # === Display shared response
@@ -175,7 +173,7 @@ if resp["data"]:
     chunk_size = 11
     table_chunks = [df[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
 
-    st.write(f"Last Updated: {resp['timestamp']}")
+    st.write(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     col1, col2 = st.columns(2)
 
