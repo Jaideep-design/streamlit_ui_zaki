@@ -2,6 +2,7 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import paho.mqtt.client as mqtt
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import threading
 import ast
 import json
@@ -174,7 +175,8 @@ if resp.get("data"):
     chunk_size = 11
     table_chunks = [df[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
 
-    st.write(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    st.write(f"Last Updated: {ist_time.strftime('%Y-%m-%d %H:%M:%S')}")
     
     col1, col2 = st.columns(2)
 
