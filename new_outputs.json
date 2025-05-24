@@ -549,10 +549,10 @@
       "Program No": 7,
       "name": "Over temperature auto restart (over temperature restart setting)",
       "bytes": 2,
-      "description": "0x0001: LfE/Enable, 0x0000: Lfd/Disable",
+      "description": "0x0001: EfE/Enable, 0x0000: Efd/Disable",
       "commands": {
-        "Lfd": 0,
-        "LfE": 1
+        "Efd": 0,
+        "EfE": 1
       }
     },
     {
