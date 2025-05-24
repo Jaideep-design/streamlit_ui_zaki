@@ -11,16 +11,17 @@ presets_config = {
         "Max total charge current": "10",
         "AC input voltage range": "APL",
         "Battery type": "USE",
-        "Max utility charge current": "20",
+        "Max utility charge current": "10",
         "Charger source priority": "SNU",
-        "Bulk charging voltage": "28.7",
-        "Floating charging voltage": "28.2",
-        "Low DC cut-off Voltage*": "21.7",
+        "Bulk charging voltage": "28.8",
+        "Floating charging voltage": "27.6",
+        "Low DC cut-off Voltage*": "23.8",
         "GRID-tie operation": "OFF",
         "Overload auto restart (overload restart setting)":"LfE",
-        "Over temperature auto restart (over temperature restart setting)":"LfE",
+        "Over temperature auto restart (over temperature restart setting)":"EfE",
         "Overload bypass":"byE",
-        "Exit Setting Mode":"GOH"
+        "Exit Setting Mode":"GOH",
+        "Beeps while primary source interrupt (high priority source access, buzzer prompt)":"AOF"
     },
     "100Ah": {
         "Output Source priority": "SUB",
@@ -29,13 +30,14 @@ presets_config = {
         "Battery type": "USE",
         "Max utility charge current": "50",
         "Charger source priority": "SNU",
-        "Bulk charging voltage": "28.7",
-        "Floating charging voltage": "28.2",
-        "Low DC cut-off Voltage*": "21.7",
+        "Bulk charging voltage": "28.8",
+        "Floating charging voltage": "27.6",
+        "Low DC cut-off Voltage*": "23.8",
         "GRID-tie operation": "OFF",
         "Overload auto restart (overload restart setting)":"LfE",
-        "Over temperature auto restart (over temperature restart setting)":"LfE",
+        "Over temperature auto restart (over temperature restart setting)":"EfE",
         "Overload bypass":"byE",
-        "Exit Setting Mode":"GOH"
+        "Exit Setting Mode":"GOH",
+        "Beeps while primary source interrupt (high priority source access, buzzer prompt)":"AOF"
     }
 }
