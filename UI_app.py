@@ -72,7 +72,7 @@ elif protocol == "Modbus":
     com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
     st.write(f"You selected {com_port} for Modbus communication.")
 # ------------------ MAIN READ SECTION ------------------ #
-st.header("📦 Inverter Live Parameters")
+st.header("📦 Live Parameters")
 
 registers_perform = cached_load_register_map()
 if not registers_perform:
@@ -81,18 +81,6 @@ if not registers_perform:
 
 df_modbus, bitflag_items, log_row = create_dataframe_from_registers(registers_perform)
 
-# Use MQTT or Modbus
-if protocol == "MQTT":
-    mqtt_data = get_latest_data()
-    if mqtt_data:
-        df_mqtt = pd.DataFrame([mqtt_data])
-        df = df_mqtt.melt(var_name='Name', value_name='Value')
-    else:
-        st.warning("⚠️ No MQTT data received yet.")
-        df = pd.DataFrame()
-else:
-    df = df_modbus
-    
 # Use MQTT or Modbus
 if protocol == "MQTT":
     mqtt_data = get_latest_data()
@@ -118,7 +106,7 @@ elif protocol == "Modbus":
 st.markdown(f"⏰ **Last updated:** {timestamp}")
 
 # ------------------ DISPLAY DATA ------------------ #
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 def display_bitflags_side_by_side(bitflag_rows):
     for i in range(0, len(bitflag_rows), 2):
@@ -157,12 +145,36 @@ chunk_size = 14
 table_chunks = [non_bitflag_df[i:i + chunk_size] for i in range(0, len(non_bitflag_df), chunk_size)]
 
 with col2:
-    st.subheader("Live Parameters")
+    st.subheader("Live Inverter Parameters")
+    
     if len(table_chunks) > 0:
         render_compact_table(table_chunks[0])
+    
+    # Add Inverter Comm Fault as bitflag-style
+    inverter_fault_df = df[df["Name"] == "Inverter Comm Fault"]
+    if not inverter_fault_df.empty:
+        display_bitflags_side_by_side(inverter_fault_df.to_dict("records"))
 
 if protocol == "Modbus":
     log_data("discharge_register_log.csv", registers_perform, log_row)
+    
+with col3:
+    st.subheader('Live AC Parameters')
+
+    # Define AC bitflag-like items and regular AC parameters
+    ac_bitflags = ["AC Comm Fault"]
+    ac_regular_params = ["AC Power_Status", "AC Set_temperature"]
+
+    # Display regular AC parameters in table form
+    ac_regular_df = df[df["Name"].isin(ac_regular_params)]
+    if not ac_regular_df.empty:
+        render_compact_table(ac_regular_df)
+
+    # Display AC bitflags with color coding
+    ac_bitflag_df = df[df["Name"].isin(ac_bitflags)]
+    if not ac_bitflag_df.empty:
+        display_bitflags_side_by_side(ac_bitflag_df.to_dict("records"))
+
 
 # ------------------ WRITE SECTION ------------------ #
 st.markdown("---")
