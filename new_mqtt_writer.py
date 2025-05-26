@@ -15,6 +15,7 @@ from presets_config import presets_config
 import threading
 import mqtt_storage
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 # Placeholder to collect incoming response data
@@ -186,14 +187,16 @@ def handle_parameter_write_mqtt(selected_topic, selected_preset=None):
         
             except Exception as e:
                 response_data[address] = f"Error: {e}"
-    
-                
+
         if mqtt_storage.mqtt_storage_state["last_update_time"]:
-            time_diff = datetime.now() - mqtt_storage.mqtt_storage_state["last_update_time"]
+            last_update_time = mqtt_storage.mqtt_storage_state["last_update_time"].astimezone(ZoneInfo("Asia/Kolkata"))
+            ist_time_now = datetime.now(ZoneInfo("Asia/Kolkata"))
+            time_diff = ist_time_now - last_update_time
             seconds_ago = int(time_diff.total_seconds())
-            st.info(f"📅 Last updated at: {mqtt_storage.mqtt_storage_state['last_update_time'].strftime('%Y-%m-%d %H:%M:%S')} ({seconds_ago} seconds ago)")
+            st.info(f"📅 Last updated at: {last_update_time.strftime('%Y-%m-%d %H:%M:%S')} ({seconds_ago} seconds ago)")
         else:
             st.warning("⚠️ No update has been received yet.")
+
 
     header_cols = st.columns([1, 1, 1, 1])
     with header_cols[0]: st.markdown("**Parameter**")
