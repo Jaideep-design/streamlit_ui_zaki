@@ -16,7 +16,11 @@ latest_data = {"PV_V": 100, "PV_W": 100}
 def get_latest_data():
     with latest_data_lock:
         return latest_data.copy()
-    
+
+def clear_latest_data():
+    with latest_data_lock:
+        latest_data.clear()
+
 # Add this for tracking online status
 last_mqtt_activity = defaultdict(lambda: 0)
 activity_lock = threading.Lock()
