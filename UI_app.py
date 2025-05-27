@@ -76,6 +76,10 @@ if protocol == "MQTT":
     else:
         st.sidebar.error("No MQTT topics found.")
 
+elif protocol == "Modbus":
+    com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
+    st.write(f"You selected {com_port} for Modbus communication.")
+
 # ------------------ MAIN READ SECTION ------------------ #
 st.header("📦 Live Parameters")
 
