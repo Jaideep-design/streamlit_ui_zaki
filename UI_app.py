@@ -10,9 +10,10 @@ from data_reader import (
     client_sunnal, read_register, write_to_modbus_slave,
     build_modbus_write_command, simulate
 )
+import mqtt_storage
 from transform_data import handle_parameter_write
 from new_mqtt_writer import handle_parameter_write_mqtt
-from shared_state_UI import get_latest_data, is_topic_online
+from shared_state_UI import get_latest_data, is_topic_online, clear_latest_data
 from mqtt_logic import start_streaming
 from presets_config import presets_config
 
@@ -46,9 +47,11 @@ if protocol == "MQTT":
     if topics:
         selected_topic = st.sidebar.selectbox("Select MQTT Topic", topics, key="mqtt_topic")
         st.write(f"You selected topic: {selected_topic}")
-        status = "🟢 Online" if is_topic_online(f"/AC/1/{selected_topic}/Datalog") else "🔴 Offline"
-        badge_color = "#d4edda" if "Online" in status else "#f8d7da"
-        text_color = "green" if "Online" in status else "red"
+        
+        is_online_now = is_topic_online(f"/AC/1/{selected_topic}/Datalog")
+        status = "🟢 Online" if is_online_now else "🔴 Offline"
+        badge_color = "#d4edda" if is_online_now else "#f8d7da"
+        text_color = "green" if is_online_now else "red"
         
         st.markdown(f"""
         <div style='background-color:{badge_color}; padding:8px 12px; margin-top:10px;
@@ -62,15 +65,17 @@ if protocol == "MQTT":
             st.session_state.last_topic = None
 
         if selected_topic != st.session_state.last_topic:
+            # Clear data on topic change (whether online or offline)
+            clear_latest_data()  # 🧹 Always clear the external dictionary
+
+            # Update the last selected topic
             st.session_state.last_topic = selected_topic
+
+            # Start new data stream thread
             threading.Thread(target=start_streaming, args=(selected_topic,), daemon=True).start()
     else:
         st.sidebar.error("No MQTT topics found.")
 
-
-elif protocol == "Modbus":
-    com_port = st.sidebar.selectbox("Select COM Port", [f"COM{i}" for i in range(1, 8)], key="modbus_com_port")
-    st.write(f"You selected {com_port} for Modbus communication.")
 # ------------------ MAIN READ SECTION ------------------ #
 st.header("📦 Live Parameters")
 
@@ -131,50 +136,52 @@ def render_compact_table(df):
     table_html += df.to_html(index=False, escape=False)
     st.markdown(table_html, unsafe_allow_html=True)
 
-bitflag_df = df[df["Name"].isin(bitflag_items)]
-if not bitflag_df.empty:
-    with col1:
-        st.subheader("Fault and Alarm Codes")
-        display_bitflags_side_by_side(bitflag_df.to_dict("records"))
+if not df.empty:
+    bitflag_df = df[df["Name"].isin(bitflag_items)]
+    if not bitflag_df.empty:
+        with col1:
+            st.subheader("Fault and Alarm Codes")
+            display_bitflags_side_by_side(bitflag_df.to_dict("records"))
 
-# Remove bitflag rows from df before splitting into table chunks
-non_bitflag_df = df[~df["Name"].isin(bitflag_items + ["Timestamp"])]
+    # Remove bitflag rows from df before splitting into table chunks
+    non_bitflag_df = df[~df["Name"].isin(bitflag_items + ["Timestamp"])]
 
-# Chunk the remaining rows (non-bitflag) for table display
-chunk_size = 14
-table_chunks = [non_bitflag_df[i:i + chunk_size] for i in range(0, len(non_bitflag_df), chunk_size)]
+    # Chunk the remaining rows (non-bitflag) for table display
+    chunk_size = 14
+    table_chunks = [non_bitflag_df[i:i + chunk_size] for i in range(0, len(non_bitflag_df), chunk_size)]
 
-with col2:
-    st.subheader("Live Inverter Parameters")
-    
-    if len(table_chunks) > 0:
-        render_compact_table(table_chunks[0])
-    
-    # Add Inverter Comm Fault as bitflag-style
-    inverter_fault_df = df[df["Name"] == "Inverter Comm Fault"]
-    if not inverter_fault_df.empty:
-        display_bitflags_side_by_side(inverter_fault_df.to_dict("records"))
+    with col2:
+        st.subheader("Live Inverter Parameters")
 
-if protocol == "Modbus":
-    log_data("discharge_register_log.csv", registers_perform, log_row)
-    
-with col3:
-    st.subheader('Live AC Parameters')
+        if len(table_chunks) > 0:
+            render_compact_table(table_chunks[0])
 
-    # Define AC bitflag-like items and regular AC parameters
-    ac_bitflags = ["AC Comm Fault"]
-    ac_regular_params = ["AC Power_Status", "AC Set_temperature"]
+        # Add Inverter Comm Fault as bitflag-style
+        inverter_fault_df = df[df["Name"] == "Inverter Comm Fault"]
+        if not inverter_fault_df.empty:
+            display_bitflags_side_by_side(inverter_fault_df.to_dict("records"))
 
-    # Display regular AC parameters in table form
-    ac_regular_df = df[df["Name"].isin(ac_regular_params)]
-    if not ac_regular_df.empty:
-        render_compact_table(ac_regular_df)
+    if protocol == "Modbus":
+        log_data("discharge_register_log.csv", registers_perform, log_row)
 
-    # Display AC bitflags with color coding
-    ac_bitflag_df = df[df["Name"].isin(ac_bitflags)]
-    if not ac_bitflag_df.empty:
-        display_bitflags_side_by_side(ac_bitflag_df.to_dict("records"))
+    with col3:
+        st.subheader('Live AC Parameters')
 
+        # Define AC bitflag-like items and regular AC parameters
+        ac_bitflags = ["AC Comm Fault"]
+        ac_regular_params = ["AC Power_Status", "AC Set_temperature"]
+
+        # Display regular AC parameters in table form
+        ac_regular_df = df[df["Name"].isin(ac_regular_params)]
+        if not ac_regular_df.empty:
+            render_compact_table(ac_regular_df)
+
+        # Display AC bitflags with color coding
+        ac_bitflag_df = df[df["Name"].isin(ac_bitflags)]
+        if not ac_bitflag_df.empty:
+            display_bitflags_side_by_side(ac_bitflag_df.to_dict("records"))
+else:
+    st.info("📡 Waiting for live data from device...")
 
 # ------------------ WRITE SECTION ------------------ #
 st.markdown("---")
@@ -185,4 +192,15 @@ if protocol == "Modbus" and not df.empty:
         create_dataframe_from_registers, simulate
     )
 elif protocol == "MQTT" and not df.empty:
+    if 'last_read_settings_topic' not in st.session_state:
+        st.session_state.last_read_settings_topic = None
+    
+    if selected_topic != st.session_state.last_read_settings_topic:
+        st.session_state.last_read_settings_topic = selected_topic
+    
+        # ✅ Clear old data when topic changes
+        mqtt_storage.mqtt_storage_state['mqtt_response_data'].clear()
+        mqtt_storage.mqtt_storage_state['structured_response_data'].clear()
+        mqtt_storage.mqtt_storage_state['last_update_time'] = None
+
     handle_parameter_write_mqtt(selected_topic, selected_preset)
