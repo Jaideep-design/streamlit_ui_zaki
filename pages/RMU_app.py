@@ -1,7 +1,6 @@
 import streamlit as st
 st.set_page_config(layout="wide")
 import paho.mqtt.client as mqtt
-from zoneinfo import ZoneInfo
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import threading
@@ -81,9 +80,18 @@ st.title("MQTT Device Monitor")
 
 devices = load_mqtt_topics()
 
+# Track device selection across reruns
+if "previous_device" not in st.session_state:
+    st.session_state.previous_device = None
+
 device = st.selectbox("Select Device", devices)
 
 if device:
+    # Check if the device selection has changed
+    if st.session_state.previous_device != device:
+        shared_state.shared_response.clear()  # Clear cached response when device changes
+        st.session_state.previous_device = device  # Update stored device
+
     subscribe_topic = f"/AC/1/{device}/Response"
     publish_topic = f"/AC/1/{device}/Command"
     st.write(f"Subscribe Topic: `{subscribe_topic}`")
@@ -104,11 +112,10 @@ def publisher_loop(userdata):
         client.publish(userdata['publish_topic'], DEVICE_MESSAGE)
     else:
         print("MQTT client not connected in time.")
-            
 
 if st.button("Read Parameters"):
     with st.spinner("Initializing device..."):
-        shared_state.shared_response.clear()  # clear cached response
+        shared_state.shared_response.clear()  # Clear again to be extra safe
         userdata = {
             'device': device,
             'subscribe_topic': subscribe_topic,
@@ -117,7 +124,7 @@ if st.button("Read Parameters"):
 
         mqtt_ready.clear()
         response_received.clear()
-        client_connected.clear()  # important to clear this too
+        client_connected.clear()
 
         # Start MQTT client thread
         threading.Thread(target=start_mqtt, args=(userdata,), daemon=True).start()
@@ -135,7 +142,6 @@ if st.button("Read Parameters"):
                 st.error("Device is offline or not responding.")
         else:
             st.error("MQTT client failed to connect to broker.")
-
 
 # === Display shared response
 resp = shared_state.shared_response
