@@ -1,8 +1,8 @@
 import streamlit as st
 st.set_page_config(layout="wide")
 import paho.mqtt.client as mqtt
-from datetime import datetime
 from zoneinfo import ZoneInfo
+from datetime import datetime
 import threading
 import ast
 import json
@@ -112,6 +112,70 @@ def publisher_loop(userdata):
         client.publish(userdata['publish_topic'], DEVICE_MESSAGE)
     else:
         print("MQTT client not connected in time.")
+
+############################################################################################
+with st.expander("Change Device Log Frequency"):
+    st.markdown("### Set New Log Frequency (in seconds)")
+
+    # Frequency range for validation
+    min_freq = 1
+    max_freq = 120
+
+    new_freq_input = st.text_input("Enter frequency (1 to 120 seconds)", key="log_freq_input")
+
+    if st.button("Set Log Frequency", key="set_frequency"):
+        try:
+            if not new_freq_input:
+                st.warning("⚠️ Please enter a frequency value.")
+            else:
+                try:
+                    new_freq = int(new_freq_input)
+                except ValueError:
+                    st.error("❌ Enter a valid integer.")
+                    raise st.stop()
+
+                if not (min_freq <= new_freq <= max_freq):
+                    st.warning(f"⚠️ Frequency must be between {min_freq} and {max_freq} seconds.")
+                    raise st.stop()
+
+                # Prepare MQTT client and listen for acknowledgment
+                ack_responses = []
+                command_client = mqtt.Client()
+
+                def on_message_ack(client, userdata, msg):
+                    try:
+                        payload = msg.payload.decode()
+                        if "Updated" in payload or "OK" in payload:
+                            ack_responses.append("Updated")
+                    except Exception as e:
+                        st.error(f"⚠️ Failed to parse response: {e}")
+
+                command_client.on_message = on_message_ack
+                command_client.connect(BROKER, PORT, 60)
+                command_client.subscribe(subscribe_topic)
+
+                # Prepare frequency change command
+                mqtt_command = f"#DLI{new_freq}&"
+                command_client.publish(publish_topic, mqtt_command)
+
+                # Wait for acknowledgment
+                start_time = time.time()
+                while time.time() - start_time < 5:
+                    command_client.loop(timeout=0.1)
+                    if "Updated" in ack_responses:
+                        break
+
+                command_client.disconnect()
+
+                if "Updated" in ack_responses:
+                    st.success(f"✅ Frequency changed to {new_freq} seconds successfully.")
+                else:
+                    st.error("❌ No acknowledgment received for frequency change.")
+
+        except Exception as e:
+            st.error(f"⚠️ MQTT operation failed: {e}")
+
+#############################################################################################                
 
 if st.button("Read Parameters"):
     with st.spinner("Initializing device..."):
