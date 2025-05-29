@@ -151,7 +151,7 @@ if not df.empty:
     non_bitflag_df = df[~df["Name"].isin(bitflag_items + ["Timestamp"])]
 
     # Chunk the remaining rows (non-bitflag) for table display
-    chunk_size = 14
+    chunk_size = 15
     table_chunks = [non_bitflag_df[i:i + chunk_size] for i in range(0, len(non_bitflag_df), chunk_size)]
 
     with col2:
