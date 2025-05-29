@@ -27,7 +27,7 @@ if project_root not in sys.path:
 from utils import shared_state
 @st.cache_data
 def load_mqtt_topics():
-    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 300)]
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 301)]
 
 # === MQTT Configuration
 BROKER = "ecozen.ai"
