@@ -68,6 +68,7 @@ COLUMN_MAPPING = {
     'Battery Equalization': 'Battery Equalization',
     'No Battery': 'No Battery',
     'INT TIME': 'Timestamp',
+    'LOG INT': 'Upload Frequnecy actual',
     'AC_PWR_STAT': 'AC Power_Status',
     'AC_SET_TEMP': 'AC Set_temperature',
     'Ac comm fault': 'AC Comm Fault',
