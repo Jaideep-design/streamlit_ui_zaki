@@ -24,7 +24,7 @@ def cached_load_register_map():
 
 @st.cache_data
 def load_mqtt_topics():
-    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 61)]
+    return [f"EZMCISAC{str(i).zfill(5)}" for i in range(1, 301)]
 
 # ------------------ STREAMLIT CONFIG ------------------ #
 st.set_page_config(page_title="Device Parameter Config", layout="wide")
