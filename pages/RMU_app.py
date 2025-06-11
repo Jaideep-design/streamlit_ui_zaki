@@ -11,6 +11,7 @@ import pandas as pd
 import warnings
 import sys
 import os
+import re
 
 warnings.filterwarnings('ignore')
 try:
@@ -294,8 +295,13 @@ if resp.get("data"):
                             st.error("❌ Enter a valid integer.")
                             continue
     
-                        # Parse limits
-                        limits = limits_str.replace("to", "-").replace(" ", "").split("-")
+
+                        # Extract two integers (positive or negative) using regex
+                        limits = re.findall(r'-?\d+', limits_str)
+                        if len(limits) != 2:
+                            st.error(f"⚠️ Could not parse limits for '{param}': '{limits_str}'")
+                            continue
+                        
                         lower, upper = int(limits[0]), int(limits[1])
     
                         if not (lower <= value <= upper):
